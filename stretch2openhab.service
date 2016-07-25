@@ -1,0 +1,13 @@
+[Unit]
+Description=Stretch to openHAB bridge
+After=network.target
+Requires=openhab.service
+
+[Service]
+ExecStart=/usr/bin/java -jar /opt/stretch2openhab/stretch2openhab.jar /opt/stretch2openhab/config.yml
+Type=simple
+Restart=always
+WorkingDirectory=/opt/stretch2openhab/
+
+[Install]
+WantedBy=default.target

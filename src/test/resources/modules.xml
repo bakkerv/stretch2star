@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modules>
+	<module id='7014744de44c46eab8e50dec93b44cb2'>
+		<vendor_name>Plugwise</vendor_name>
+		<vendor_model>NR</vendor_model>
+		<hardware_version>6539-0900-8806</hardware_version>
+		<firmware_version>2011-06-27T10:52:18+02:00</firmware_version>
+		<created_date>2015-01-12T21:40:47.259+01:00</created_date>
+		<modified_date>2016-07-24T20:05:10.909+02:00</modified_date>
+		<deleted_date></deleted_date>
+		<services>
+			<electricity_interval_meter id='ed582b414d06496c943a583f81ab2806'>
+				<measurement log_date="2016-07-24T20:00:00+02:00" unit="Wh" directionality="consumed" interval="PT1H">0.14</measurement>
+				<measurement log_date="2016-07-24T20:00:00+02:00" unit="Wh" directionality="produced" interval="PT1H">0.00</measurement>
+			</electricity_interval_meter>
+			<electricity_point_meter id='9366ebc1f1994a568aa416e68050ba94'>
+				<measurement log_date="2016-07-24T20:05:10.880+02:00" unit="W" directionality="consumed">1.64</measurement>
+				<measurement log_date="2016-07-24T20:05:10.880+02:00" unit="W" directionality="produced">0.00</measurement>
+			</electricity_point_meter>
+			<relay id='a7f2020f261c4ce3939eb899b8b2ae17'>
+				<measurement log_date="2016-07-24T20:05:03.684+02:00">on</measurement>
+			</relay>
+		</services>
+		<protocols>
+			<network_router id='e4e4c0bdd777400fbb490ce35cd0e876'><mac_address>000D6F00035628E4</mac_address><network id='a23fe4628ae746e38bb06cf028b735da'/></network_router>
+		</protocols>
+	</module>
+	<module id='81e13cc3fa5c416fbcf180ceb6de24bc'>
+		<vendor_name>Plugwise</vendor_name>
+		<vendor_model>NR</vendor_model>
+		<hardware_version>6539-0900-8806</hardware_version>
+		<firmware_version>2011-06-27T10:52:18+02:00</firmware_version>
+		<created_date>2015-01-12T21:03:18.438+01:00</created_date>
+		<modified_date>2016-07-24T20:05:39.223+02:00</modified_date>
+		<deleted_date></deleted_date>
+		<services>
+			<relay id='e3eb9f461b19487e957eea8c6da2e1e6'>
+				<measurement log_date="2016-07-24T20:05:39.195+02:00">on</measurement>
+			</relay>
+			<electricity_point_meter id='754e52b825e94f9cad05dd2aec294b20'>
+				<measurement log_date="2016-07-24T20:05:08.377+02:00" unit="W" directionality="consumed">0.85</measurement>
+				<measurement log_date="2016-07-24T20:05:08.377+02:00" unit="W" directionality="produced">0.00</measurement>
+			</electricity_point_meter>
+			<electricity_interval_meter id='da205ec9089b42dc950c11ad318132e1'>
+				<measurement log_date="2016-07-24T20:00:00+02:00" unit="Wh" directionality="consumed" interval="PT1H">0.00</measurement>
+				<measurement log_date="2016-07-24T20:00:00+02:00" unit="Wh" directionality="produced" interval="PT1H">0.00</measurement>
+			</electricity_interval_meter>
+		</services>
+		<protocols>
+			<network_router id='752103d93bfb462aa325b501780af1e7'><mac_address>000D6F0003B9C40B</mac_address><network id='a23fe4628ae746e38bb06cf028b735da'/></network_router>
+		</protocols>
+	</module>
+</modules>
