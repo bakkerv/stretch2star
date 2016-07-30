@@ -14,11 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Maps;
+import com.google.common.eventbus.EventBus;
 import com.google.inject.Inject;
-import com.google.inject.assistedinject.Assisted;
-
 import nl.bakkerv.stretch2openhab.config.StretchToOpenhabConfiguration.OpenHABConfig;
-import nl.bakkerv.stretch2openhab.openhab.OpenHABSwitchStateChangeListener.OpenHABSwitchState;
+import nl.bakkerv.stretch2openhab.openhab.OpenHABSwitchStateChange.SwitchState;
 import nu.xom.Builder;
 import nu.xom.Document;
 import nu.xom.Nodes;
@@ -34,17 +33,17 @@ public class OpenHABStateUpdateListener implements Runnable {
 	OpenHABConfig openhabConfig;
 
 	Map<String, Socket> websocketConnections = Maps.newHashMap();
-	private OpenHABSwitchStateChangeListener stateChangeListener;
+	private EventBus eventBus;
 
 	@Inject
 	public OpenHABStateUpdateListener(@SuppressWarnings("rawtypes") final Client wsClient,
 			final javax.ws.rs.client.Client webClient,
 			final OpenHABConfig openhabConfig,
-			@Assisted final OpenHABSwitchStateChangeListener stateChangeListener) {
+			final EventBus eventBus) {
 		this.wsClient = wsClient;
 		this.webClient = webClient;
 		this.openhabConfig = openhabConfig;
-		this.stateChangeListener = stateChangeListener;
+		this.eventBus = eventBus;
 	}
 
 	@Override
@@ -53,7 +52,7 @@ public class OpenHABStateUpdateListener implements Runnable {
 		Map<String, String> itemsInOpenHAB = requestItems(this.openhabConfig.getPlugwiseSwitchPageURL());
 		log.info("{}", itemsInOpenHAB);
 		for (Entry<String, String> e : itemsInOpenHAB.entrySet()) {
-			subscribeToStateUpdate(e.getKey(), e.getValue());
+			new Thread(new DeviceStateUpdateListener(e.getKey(), e.getValue(), this.wsClient, this.eventBus)).start();
 		}
 		synchronized (this) {
 			while (true) {
@@ -66,33 +65,60 @@ public class OpenHABStateUpdateListener implements Runnable {
 
 	}
 
-	private void subscribeToStateUpdate(final String name, final String baseURL) {
-		final RequestBuilder<?> requestBuilder = this.wsClient.newRequestBuilder()
-				.method(METHOD.GET)
-				.uri(baseURL + "/state")
-				.transport(TRANSPORT.WEBSOCKET);
-		try {
-			Socket socket = this.wsClient.create();
-			this.websocketConnections.put(name, socket);
-			log.info("Connnecting {}", name);
-			socket.on(new Function<String>() {
-				@Override
-				public void on(final String r) {
-					log.debug("{} -> {}", name, r);
-					OpenHABStateUpdateListener.this.stateChangeListener.switchChanged(name, OpenHABSwitchState.valueOf(r));
+	public static class DeviceStateUpdateListener implements Runnable {
+
+		private String baseURL;
+		private String name;
+		@SuppressWarnings("rawtypes")
+		private Client wsClient;
+		private EventBus eventBus;
+		private Socket socket;
+
+		public DeviceStateUpdateListener(final String name, final String baseURL,
+				@SuppressWarnings("rawtypes") final Client wsClient, final EventBus eventBus) {
+			this.name = name;
+			this.baseURL = baseURL;
+			this.wsClient = wsClient;
+			this.eventBus = eventBus;
+		}
+
+		@Override
+		public void run() {
+			log.info("Subscribing to events for {} at {}", this.name, this.baseURL);
+			this.eventBus.register(this);
+			final RequestBuilder<?> requestBuilder = this.wsClient.newRequestBuilder()
+					.method(METHOD.GET)
+					.uri(this.baseURL + "/state")
+					.transport(TRANSPORT.WEBSOCKET);
+			try {
+				this.socket = this.wsClient.create();
+				this.socket.on(new Function<String>() {
+					@Override
+					public void on(final String r) {
+						log.debug("{} -> {}", DeviceStateUpdateListener.this.name, r);
+						DeviceStateUpdateListener.this.eventBus
+								.post(OpenHABSwitchStateChange.create(DeviceStateUpdateListener.this.name, SwitchState.valueOf(r)));
+					}
+				})
+						.on(new Function<Throwable>() {
+
+							@Override
+							public void on(final Throwable t) {
+								log.error("{}", t);
+							}
+
+						}).open(requestBuilder.build());
+			} catch (IOException ioe) {
+				log.error("Something went wrong: {}", ioe);
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
 				}
-			})
-					.on(new Function<Throwable>() {
+				new Thread(this).start();
+			} finally {
+				this.eventBus.unregister(this);
+			}
 
-						@Override
-						public void on(final Throwable t) {
-							log.error("{}", t);
-						}
-
-					}).open(requestBuilder.build());
-		} catch (IOException ioe) {
-			log.error("Something went wrong: {}", ioe);
-			this.websocketConnections.remove(name);
 		}
 
 	}
@@ -109,9 +135,9 @@ public class OpenHABStateUpdateListener implements Runnable {
 				returnValue.put(name, link);
 			}
 		} catch (ParsingException ex) {
-			System.err.println("Cafe con Leche is malformed today. How embarrassing!");
+			System.err.println("Response is invalid");
 		} catch (IOException ex) {
-			System.err.println("Could not connect to Cafe con Leche. The site may be down.");
+			System.err.println("Cannot reach openHAB website");
 		}
 		return returnValue;
 	}

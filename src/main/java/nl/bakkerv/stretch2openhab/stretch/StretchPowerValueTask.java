@@ -6,29 +6,28 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.eventbus.EventBus;
 import com.google.inject.Inject;
-import com.google.inject.assistedinject.Assisted;
 
 public class StretchPowerValueTask implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(StretchPowerValueTask.class);
 
 	private StretchPowerValuesProvider fetcher;
-	private StretchResultNotifier[] notifiers;
+
+	private EventBus eventBus;
 
 	@Inject
-	public StretchPowerValueTask(final StretchPowerValuesProvider fetcher, @Assisted final StretchResultNotifier... notifiers) {
+	public StretchPowerValueTask(final StretchPowerValuesProvider fetcher, final EventBus eventBus) {
 		this.fetcher = fetcher;
-		this.notifiers = notifiers;
+		this.eventBus = eventBus;
 	}
 
 	@Override
 	public void run() {
 		logger.debug("Fetching values");
 		final Map<String, BigDecimal> fetchedPowerValues = this.fetcher.fetchPowerValues();
-		for (StretchResultNotifier n : this.notifiers) {
-			n.processStretchResults(fetchedPowerValues);
-		}
+		this.eventBus.post(fetchedPowerValues);
 	}
 
 }

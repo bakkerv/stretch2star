@@ -2,7 +2,6 @@ package nl.bakkerv.stretch2openhab;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -13,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.BiMap;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
@@ -22,11 +23,10 @@ import nl.bakkerv.stretch2openhab.config.StretchToOpenhabConfiguration;
 import nl.bakkerv.stretch2openhab.config.StretchToOpenhabModule;
 import nl.bakkerv.stretch2openhab.openhab.OpenHABPowerValueSubmitterFactory;
 import nl.bakkerv.stretch2openhab.openhab.OpenHABPowerValueSubmitterModule;
-import nl.bakkerv.stretch2openhab.stretch.StretchPowerValueTaskFactory;
-import nl.bakkerv.stretch2openhab.stretch.StretchPowerValueTaskModule;
-import nl.bakkerv.stretch2openhab.stretch.StretchResultNotifier;
+import nl.bakkerv.stretch2openhab.stretch.StretchPowerValueTask;
+import nl.bakkerv.stretch2openhab.stretch.StretchResults;
 
-public class StretchToOpenhabService implements StretchResultNotifier {
+public class StretchToOpenhabService {
 
 	private ExecutorService postThreadPools;
 	@Inject
@@ -35,6 +35,8 @@ public class StretchToOpenhabService implements StretchResultNotifier {
 	private StretchToOpenhabConfiguration configuration;
 	@Inject
 	private BiMap<String, String> deviceMapping;
+	@Inject
+	private EventBus eventBus;
 
 	private final static Logger logger = LoggerFactory.getLogger(StretchToOpenhabService.class);
 
@@ -48,13 +50,13 @@ public class StretchToOpenhabService implements StretchResultNotifier {
 
 	public StretchToOpenhabService(final String configFile) throws InterruptedException {
 		Injector i = Guice.createInjector(new StretchToOpenhabModule(configFile),
-				new StretchPowerValueTaskModule(),
 				new OpenHABPowerValueSubmitterModule());
 		final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 		this.postThreadPools = Executors.newFixedThreadPool(3);
 		i.injectMembers(this);
-		scheduler.scheduleAtFixedRate(i.getInstance(StretchPowerValueTaskFactory.class).create(this), 0, 5, TimeUnit.SECONDS);
+		scheduler.scheduleAtFixedRate(i.getInstance(StretchPowerValueTask.class), 0, 5, TimeUnit.SECONDS);
 		setupLogging();
+		this.eventBus.register(this);
 		synchronized (this) {
 			while (true) {
 				this.wait();
@@ -72,9 +74,12 @@ public class StretchToOpenhabService implements StretchResultNotifier {
 
 	}
 
-	@Override
-	public void processStretchResults(final Map<String, BigDecimal> fetchedValues) {
-		for (Entry<String, BigDecimal> entry : fetchedValues.entrySet()) {
+	@Subscribe
+	public void onStretchResults(final StretchResults results) {
+		if (results.getFetchedPowerValues() == null) {
+			return;
+		}
+		for (Entry<String, BigDecimal> entry : results.getFetchedPowerValues().entrySet()) {
 			if (!this.deviceMapping.containsKey(entry.getKey())) {
 				logger.debug("Skipping {}", entry.getKey());
 				continue;
