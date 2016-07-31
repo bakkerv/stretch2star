@@ -34,7 +34,7 @@ public class StretchValuesProvider {
 
 	@Inject
 	public StretchValuesProvider(final Client client,
-			@Named(StretchToOpenhabModule.STRETCH_CONFIG) final StretchConfig stretchConfig,
+			final StretchConfig stretchConfig,
 			@Named(StretchToOpenhabModule.STRETCH_ACCESS_LOCK) final Lock stretchLock) {
 		this.stretchLock = stretchLock;
 		this.target = client.target(stretchConfig.getStretchURL()).path("core").path("modules");
@@ -49,7 +49,7 @@ public class StretchValuesProvider {
 					.get(String.class);
 			return parseModulesXML(req);
 		} catch (Exception ie) {
-			logger.error("Could not fetch values from Stretch: {}", ie.getMessage());
+			logger.error("Could not fetch values from Stretch: {}", ie.getMessage(), ie);
 			return StretchValues.empty();
 		} finally {
 			this.stretchLock.unlock();
@@ -77,7 +77,10 @@ public class StretchValuesProvider {
 				}
 			}
 			final Nodes relay = node.query(".//relay/measurement");
-			SwitchState st = SwitchState.valueOf(relay.get(0).getValue());
+			SwitchState st = SwitchState.unknown;
+			if (relay.size() != 0) {
+				st = SwitchState.valueOf(relay.get(0).getValue());
+			}
 			returnValue.put(mac, PlugValue.create(bd, st));
 		}
 		return returnValue;

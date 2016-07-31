@@ -50,7 +50,7 @@ public class OpenHABStateUpdateListener implements Runnable {
 	public void run() {
 
 		Map<String, String> itemsInOpenHAB = requestItems(this.openhabConfig.getPlugwiseSwitchPageURL());
-		log.info("{}", itemsInOpenHAB);
+		log.info("Listening for events for {}", itemsInOpenHAB);
 		for (Entry<String, String> e : itemsInOpenHAB.entrySet()) {
 			new Thread(new DeviceStateUpdateListener(e.getKey(), e.getValue(), this.wsClient, this.eventBus)).start();
 		}
@@ -95,7 +95,7 @@ public class OpenHABStateUpdateListener implements Runnable {
 				this.socket.on(new Function<String>() {
 					@Override
 					public void on(final String r) {
-						log.debug("{} -> {}", DeviceStateUpdateListener.this.name, r);
+						log.info("{} -> {}", DeviceStateUpdateListener.this.name, r);
 						DeviceStateUpdateListener.this.eventBus
 								.post(OpenHABSwitchStateChange.create(DeviceStateUpdateListener.this.name, SwitchState.valueOf(r)));
 					}
@@ -135,9 +135,9 @@ public class OpenHABStateUpdateListener implements Runnable {
 				returnValue.put(name, link);
 			}
 		} catch (ParsingException ex) {
-			System.err.println("Response is invalid");
+			log.error("Response is invalid: {}", ex.getMessage());
 		} catch (IOException ex) {
-			System.err.println("Cannot reach openHAB website");
+			log.error("Cannot reach openHAB website @ {}: {}", plugwiseSwitchPageURL, ex.getMessage(), ex);
 		}
 		return returnValue;
 	}
