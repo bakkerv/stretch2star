@@ -18,7 +18,7 @@
 				<measurement log_date="2016-07-24T20:05:10.880+02:00" unit="W" directionality="produced">0.00</measurement>
 			</electricity_point_meter>
 			<relay id='a7f2020f261c4ce3939eb899b8b2ae17'>
-				<measurement log_date="2016-07-24T20:05:03.684+02:00">on</measurement>
+				<measurement log_date="2016-07-24T20:05:03.684+02:00">off</measurement>
 			</relay>
 		</services>
 		<protocols>

@@ -26,7 +26,7 @@ import nu.xom.ValidityException;
 
 public class StretchPowerValuesProviderTest {
 
-	private StretchPowerValuesProvider providerUnderTest;
+	private StretchValuesProvider providerUnderTest;
 	private Client clientMock;
 	private StretchConfig configMock;
 
@@ -41,7 +41,7 @@ public class StretchPowerValuesProviderTest {
 		when(this.clientMock.target(anyString())).thenReturn(webTargetMock);
 		when(webTargetMock.path(anyString())).thenReturn(webTargetMock);
 		// client.target(stretchConfig.getStretchURL()).path("core").path("modules")
-		this.providerUnderTest = new StretchPowerValuesProvider(this.clientMock, this.configMock);
+		this.providerUnderTest = new StretchValuesProvider(this.clientMock, this.configMock);
 	}
 
 	protected String readTestXML() throws IOException {
@@ -57,10 +57,10 @@ public class StretchPowerValuesProviderTest {
 
 	@Test
 	public void testParseModulesXML() throws ValidityException, ParsingException, IOException {
-		final Map<String, BigDecimal> actual = this.providerUnderTest.parseModulesXML(readTestXML());
-		final Map<String, BigDecimal> expected = ImmutableMap.of(
-				"000D6F0003B9C40B", new BigDecimal("0.85"),
-				"000D6F00035628E4", new BigDecimal("1.64"));
+		final Map<String, PlugValue> actual = this.providerUnderTest.parseModulesXML(readTestXML());
+		final Map<String, PlugValue> expected = ImmutableMap.of(
+				"000D6F0003B9C40B", PlugValue.create(new BigDecimal("0.85"), SwitchState.on),
+				"000D6F00035628E4", PlugValue.create(new BigDecimal("1.64"), SwitchState.off));
 		org.assertj.core.api.Assertions.assertThat(actual).isEqualTo(expected);
 
 	}

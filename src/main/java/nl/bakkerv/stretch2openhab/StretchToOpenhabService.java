@@ -1,6 +1,5 @@
 package nl.bakkerv.stretch2openhab;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
@@ -23,8 +22,9 @@ import nl.bakkerv.stretch2openhab.config.StretchToOpenhabConfiguration;
 import nl.bakkerv.stretch2openhab.config.StretchToOpenhabModule;
 import nl.bakkerv.stretch2openhab.openhab.OpenHABPowerValueSubmitterFactory;
 import nl.bakkerv.stretch2openhab.openhab.OpenHABPowerValueSubmitterModule;
-import nl.bakkerv.stretch2openhab.stretch.StretchPowerValueTask;
-import nl.bakkerv.stretch2openhab.stretch.StretchResults;
+import nl.bakkerv.stretch2openhab.stretch.PlugValue;
+import nl.bakkerv.stretch2openhab.stretch.StretchValuesTask;
+import nl.bakkerv.stretch2openhab.stretch.StretchValues;
 
 public class StretchToOpenhabService {
 
@@ -54,7 +54,7 @@ public class StretchToOpenhabService {
 		final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 		this.postThreadPools = Executors.newFixedThreadPool(3);
 		i.injectMembers(this);
-		scheduler.scheduleAtFixedRate(i.getInstance(StretchPowerValueTask.class), 0, 5, TimeUnit.SECONDS);
+		scheduler.scheduleAtFixedRate(i.getInstance(StretchValuesTask.class), 0, 5, TimeUnit.SECONDS);
 		setupLogging();
 		this.eventBus.register(this);
 		synchronized (this) {
@@ -75,17 +75,17 @@ public class StretchToOpenhabService {
 	}
 
 	@Subscribe
-	public void onStretchResults(final StretchResults results) {
-		if (results.getFetchedPowerValues() == null) {
+	public void onStretchResults(final StretchValues results) {
+		if (results == null || results.getFetchedValues() == null) {
 			return;
 		}
-		for (Entry<String, BigDecimal> entry : results.getFetchedPowerValues().entrySet()) {
+		for (Entry<String, PlugValue> entry : results.getFetchedValues().entrySet()) {
 			if (!this.deviceMapping.containsKey(entry.getKey())) {
 				logger.debug("Skipping {}", entry.getKey());
 				continue;
 			}
 			final String name = this.deviceMapping.get(entry.getKey());
-			this.postThreadPools.submit(this.openHABValueSubmitterFactory.create(name, entry.getValue().toPlainString()));
+			this.postThreadPools.submit(this.openHABValueSubmitterFactory.create(name, entry.getValue().getPowerValue().toPlainString()));
 		}
 		this.postThreadPools.submit(this.openHABValueSubmitterFactory.create("Plugwise_last_updated", Instant.now().toString()));
 	}

@@ -2,7 +2,7 @@ package nl.bakkerv.stretch2openhab.stretch;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Map;
+import java.util.concurrent.locks.Lock;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
@@ -11,11 +11,9 @@ import javax.ws.rs.core.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
-import jersey.repackaged.com.google.common.collect.Maps;
 import nl.bakkerv.stretch2openhab.config.StretchToOpenhabConfiguration.StretchConfig;
 import nl.bakkerv.stretch2openhab.config.StretchToOpenhabModule;
 import nu.xom.Builder;
@@ -26,19 +24,25 @@ import nu.xom.Nodes;
 import nu.xom.ParsingException;
 import nu.xom.ValidityException;
 
-public class StretchPowerValuesProvider {
+public class StretchValuesProvider {
 
 	private WebTarget target;
 
-	final static Logger logger = LoggerFactory.getLogger(StretchPowerValuesProvider.class);
+	final static Logger logger = LoggerFactory.getLogger(StretchValuesProvider.class);
+
+	private final Lock stretchLock;
 
 	@Inject
-	public StretchPowerValuesProvider(final Client client, @Named(StretchToOpenhabModule.STRETCH_CONFIG) final StretchConfig stretchConfig) {
+	public StretchValuesProvider(final Client client,
+			@Named(StretchToOpenhabModule.STRETCH_CONFIG) final StretchConfig stretchConfig,
+			@Named(StretchToOpenhabModule.STRETCH_ACCESS_LOCK) final Lock stretchLock) {
+		this.stretchLock = stretchLock;
 		this.target = client.target(stretchConfig.getStretchURL()).path("core").path("modules");
 	}
 
-	public Map<String, BigDecimal> fetchPowerValues() {
+	public StretchValues fetchValues() {
 		try {
+			this.stretchLock.lock();
 			final String req = this.target.request()
 					.accept(MediaType.TEXT_XML)
 					.acceptEncoding("*")
@@ -46,14 +50,16 @@ public class StretchPowerValuesProvider {
 			return parseModulesXML(req);
 		} catch (Exception ie) {
 			logger.error("Could not fetch values from Stretch: {}", ie.getMessage());
-			return ImmutableMap.of();
+			return StretchValues.empty();
+		} finally {
+			this.stretchLock.unlock();
 		}
 	}
 
-	protected Map<String, BigDecimal> parseModulesXML(final String req) throws ParsingException, ValidityException, IOException {
+	protected StretchValues parseModulesXML(final String req) throws ParsingException, ValidityException, IOException {
 		Builder parser = new Builder();
 		final Document parsedXML = parser.build(req, null);
-		Map<String, BigDecimal> returnValue = Maps.newHashMap();
+		StretchValues returnValue = StretchValues.create();
 		final Nodes modules = parsedXML.query("//module");
 		for (int i = 0; i < modules.size(); i++) {
 			final Node node = modules.get(i);
@@ -70,8 +76,9 @@ public class StretchPowerValuesProvider {
 					bd = bd.subtract(new BigDecimal(element1.getValue()));
 				}
 			}
-			returnValue.put(mac, bd);
-
+			final Nodes relay = node.query(".//relay/measurement");
+			SwitchState st = SwitchState.valueOf(relay.get(0).getValue());
+			returnValue.put(mac, PlugValue.create(bd, st));
 		}
 		return returnValue;
 	}
