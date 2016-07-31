@@ -10,13 +10,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.Map;
-
+import java.util.concurrent.locks.Lock;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 
 import org.junit.Before;
 import org.junit.Test;
-
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 
@@ -29,6 +28,7 @@ public class StretchPowerValuesProviderTest {
 	private StretchValuesProvider providerUnderTest;
 	private Client clientMock;
 	private StretchConfig configMock;
+	private Lock lock;
 
 	@Before
 	public void setUp() {
@@ -40,8 +40,8 @@ public class StretchPowerValuesProviderTest {
 		final WebTarget webTargetMock = mock(WebTarget.class);
 		when(this.clientMock.target(anyString())).thenReturn(webTargetMock);
 		when(webTargetMock.path(anyString())).thenReturn(webTargetMock);
-		// client.target(stretchConfig.getStretchURL()).path("core").path("modules")
-		this.providerUnderTest = new StretchValuesProvider(this.clientMock, this.configMock);
+		this.lock = mock(Lock.class);
+		this.providerUnderTest = new StretchValuesProvider(this.clientMock, this.configMock, this.lock);
 	}
 
 	protected String readTestXML() throws IOException {
@@ -62,7 +62,6 @@ public class StretchPowerValuesProviderTest {
 				"000D6F0003B9C40B", PlugValue.create(new BigDecimal("0.85"), SwitchState.on),
 				"000D6F00035628E4", PlugValue.create(new BigDecimal("1.64"), SwitchState.off));
 		org.assertj.core.api.Assertions.assertThat(actual).isEqualTo(expected);
-
 	}
 
 }
